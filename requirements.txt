@@ -8,11 +8,11 @@ google-genai>=0.1.0
 streamlit>=1.30.0
 streamlit-autorefresh>=1.0.0
 
-# HTTP Requests (for Teams webhook)
+# HTTP Requests
 requests>=2.28.0
 
 # Alerting
-pymsteams>=0.2.2
+slack-sdk>=3.21.0
 
 # Image Processing (using latest for Python 3.14 compatibility)
 pillow>=10.2.0
