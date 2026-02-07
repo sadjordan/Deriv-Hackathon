@@ -13,7 +13,7 @@ from typing import Optional
 
 from .element_discovery import ElementDiscovery, InteractiveElement
 from .site_mapper import SiteMap
-from src.alerting.slack_notifier import SlackNotifier
+from src.alerting.teams_notifier import TeamsNotifier
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ class BruteForceEngine:
         target_url: str,
         sitemap_dir: str = "sitemap",
         log_dir: str = "brute_force_logs",
-        slack_webhook_url: Optional[str] = None,
+        teams_webhook_url: Optional[str] = None,
     ):
         self.api_key = api_key
         self.target_url = target_url
@@ -65,8 +65,8 @@ class BruteForceEngine:
             "run_number": 0,
         }
 
-        # Slack notifier
-        self.slack_notifier = SlackNotifier(slack_webhook_url)
+        # Teams notifier
+        self.teams_notifier = TeamsNotifier(teams_webhook_url)
 
     def _initialize_components(self):
         """Initialize browser and AI components"""
@@ -182,13 +182,13 @@ class BruteForceEngine:
             self._cleanup_components()
             self._running = False
 
-            # Send Slack notification on exploration completion
+            # Send Teams notification on exploration completion
             self._send_exploration_completion_notification()
 
         return self.site_map.get_coverage_stats()
 
     def _send_exploration_completion_notification(self) -> None:
-        """Send Slack notification when exploration cycle completes"""
+        """Send Teams notification when exploration cycle completes"""
         coverage_stats = self.site_map.get_coverage_stats()
 
         # Determine severity based on errors found
@@ -217,7 +217,7 @@ class BruteForceEngine:
         description += f"**Errors Found:** {self.stats['errors_found']}\n"
         description += f"**Uptime:** {self.stats['uptime_seconds'] // 60}m {self.stats['uptime_seconds'] % 60}s\n"
 
-        self.slack_notifier.send_alert(
+        self.teams_notifier.send_alert(
             title=f"{status_emoji} Brute Force Cycle #{self.stats['run_number']} Complete",
             description=description,
             severity=severity,
@@ -416,8 +416,8 @@ class BruteForceEngine:
             self.stats["errors_found"] += 1
             self.site_map.mark_screen_has_issues(screen_fp)
 
-            # Send Slack alert for element error
-            self.slack_notifier.send_alert(
+            # Send Teams alert for element error
+            self.teams_notifier.send_alert(
                 title=f"Brute Force Element Error - {self._current_run_id}",
                 description=f"Error occurred while testing element '{element.label}' ({element.element_type}).\n\n"
                 f"Error: {str(e)}\n"

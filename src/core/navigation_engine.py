@@ -15,7 +15,7 @@ from src.browser.action_executor import ActionExecutor
 from src.vision.screenshot_handler import ScreenshotHandler
 from src.ai.vision_navigator import GeminiVisionNavigator, NavigationAction
 from src.diagnostics.issue_detector import IssueDetector, DetectedIssue
-from src.alerting.slack_notifier import SlackNotifier
+from src.alerting.teams_notifier import TeamsNotifier
 
 logger = logging.getLogger(__name__)
 
@@ -55,13 +55,7 @@ class NavigationSession:
 
 class NavigationEngine:
     """Core navigation engine for autonomous testing"""
-
-    def __init__(
-        self,
-        google_api_key: str,
-        use_browserless: bool = False,
-        slack_webhook_url: Optional[str] = None,
-    ):
+    def __init__(self, google_api_key: str, use_browserless: bool = False):
         """
         Initialize the navigation engine
 
@@ -76,10 +70,9 @@ class NavigationEngine:
         self.vision_navigator = GeminiVisionNavigator(google_api_key)
         self.issue_detector = IssueDetector(google_api_key)  # Phase 3: Issue detection
         self.current_session: Optional[NavigationSession] = None
-        self.slack_notifier = SlackNotifier(slack_webhook_url)
         mode = "Browserless.io cloud" if use_browserless else "local browser"
-        logger.info(f"NavigationEngine initialized with {mode} and Slack alerting")
-
+        logger.info(f"NavigationEngine initialized with {mode}")
+    
     def _transition_state(self, new_state: NavigationState, reason: str = "") -> None:
         """Transition to a new navigation state"""
         if not self.current_session:
@@ -115,12 +108,12 @@ class NavigationEngine:
         self.current_session = NavigationSession(
             session_id=session_id, url=url, objective=objective, max_errors=max_errors
         )
-
+        
         # Initialize browser (local or browserless.io cloud)
         self.browser_manager = BrowserManager(
             headless=False if not self.use_browserless else True,
             use_browserless=self.use_browserless,
-            solve_captchas=True,
+            solve_captchas=True
         )
         self.browser_manager.start()
         self.action_executor = ActionExecutor(self.browser_manager.page)
@@ -164,11 +157,9 @@ class NavigationEngine:
                     logger.info("Browser reconnected successfully")
                 except Exception as e:
                     logger.error(f"Failed to recover browser: {e}")
-                    self._transition_state(
-                        NavigationState.ERROR, f"Browser connection lost: {e}"
-                    )
+                    self._transition_state(NavigationState.ERROR, f"Browser connection lost: {e}")
                     return False
-
+            
             # 1. Capture screenshot
             screenshot_path, screenshot_b64 = self.screenshot_handler.capture_state(
                 page=self.browser_manager.page,
@@ -181,16 +172,14 @@ class NavigationEngine:
             # Build context with step history for better completion detection
             step_history = ""
             if len(self.current_session.actions_taken) > 0:
-                recent_actions = self.current_session.actions_taken[
-                    -5:
-                ]  # Last 5 actions
+                recent_actions = self.current_session.actions_taken[-5:]  # Last 5 actions
                 step_history = "\n\nPREVIOUS ACTIONS TAKEN:\n"
                 for i, prev_action in enumerate(recent_actions):
                     step_history += f"- Step {step - len(recent_actions) + i}: {prev_action.action_type} - {prev_action.reasoning[:50]}\n"
-
+            
             action = self.vision_navigator.get_next_action(
                 screenshot_b64,
-                f"Objective: {self.current_session.objective}\n\nCurrent Step: {step} of max {self.current_session.step_count + 10}\n{step_history}\n\nAnalyze the current screenshot - has the objective been achieved? If yes, respond with 'done'. Otherwise, what should I do next?",
+                f"Objective: {self.current_session.objective}\n\nCurrent Step: {step} of max {self.current_session.step_count + 10}\n{step_history}\n\nAnalyze the current screenshot - has the objective been achieved? If yes, respond with 'done'. Otherwise, what should I do next?"
             )
 
             logger.info(f"AI action: {action.action_type}")
@@ -198,43 +187,25 @@ class NavigationEngine:
             logger.info(f"Confidence: {action.confidence}")
 
             self.current_session.actions_taken.append(action)
-
+            
             # 3. Check for completion or stuck BEFORE executing
             if action.action_type == "done":
-                self._transition_state(
-                    NavigationState.COMPLETED,
-                    f"Objective completed: {action.reasoning}",
-                )
+                self._transition_state(NavigationState.COMPLETED, f"Objective completed: {action.reasoning}")
                 self.current_session.completion_reason = action.reasoning
                 return False
-
+            
             if action.action_type == "stuck":
                 self.current_session.stuck_count += 1
-                logger.warning(
-                    f"Agent reported stuck ({self.current_session.stuck_count}/{self.current_session.max_stuck_retries}): {action.reasoning}"
-                )
-
-                if (
-                    self.current_session.stuck_count
-                    >= self.current_session.max_stuck_retries
-                ):
-                    self._transition_state(
-                        NavigationState.STUCK,
-                        f"Agent stuck after {self.current_session.max_stuck_retries} retries: {action.reasoning}",
-                    )
-                    self.current_session.completion_reason = (
-                        f"Stuck: {action.reasoning}"
-                    )
+                logger.warning(f"Agent reported stuck ({self.current_session.stuck_count}/{self.current_session.max_stuck_retries}): {action.reasoning}")
+                
+                if self.current_session.stuck_count >= self.current_session.max_stuck_retries:
+                    self._transition_state(NavigationState.STUCK, f"Agent stuck after {self.current_session.max_stuck_retries} retries: {action.reasoning}")
+                    self.current_session.completion_reason = f"Stuck: {action.reasoning}"
                     return False
                 else:
                     # Retry - try scrolling or waiting to get unstuck
-                    logger.info(
-                        f"Retry {self.current_session.stuck_count}: Attempting recovery by scrolling"
-                    )
-                    self._transition_state(
-                        NavigationState.STUCK,
-                        f"Stuck retry {self.current_session.stuck_count}",
-                    )
+                    logger.info(f"Retry {self.current_session.stuck_count}: Attempting recovery by scrolling")
+                    self._transition_state(NavigationState.STUCK, f"Stuck retry {self.current_session.stuck_count}")
                     # Try scrolling to reveal more content
                     try:
                         self.action_executor.scroll(direction="up", amount=300)
@@ -242,7 +213,7 @@ class NavigationEngine:
                     except:
                         pass
                     return True  # Continue to next step
-
+            
             # 4. Execute action
             success = self._execute_action(action)
 
@@ -270,8 +241,8 @@ class NavigationEngine:
                         NavigationState.ERROR,
                         f"Exceeded error tolerance ({self.current_session.max_errors})",
                     )
-                    # Send Slack alert for critical error
-                    self.slack_notifier.send_alert(
+                    # Send Teams alert for critical error
+                    self.teams_notifier.send_alert(
                         title=f"Navigation Error Limit Exceeded - {self.current_session.session_id}",
                         description=f"Session exceeded maximum error tolerance of {self.current_session.max_errors} errors.\n\n"
                         f"Objective: {self.current_session.objective}\n"
@@ -289,17 +260,15 @@ class NavigationEngine:
                 else:
                     self._transition_state(NavigationState.STUCK, "Action failed")
                     return True
-
+            
             # 5. Wait for page update
             time.sleep(0.5)
-
+            
             # Successfully navigating - reset stuck counter
             if self.current_session.state == NavigationState.STUCK:
                 self._transition_state(NavigationState.NAVIGATING, "Recovered")
-            self.current_session.stuck_count = (
-                0  # Reset stuck counter on successful action
-            )
-
+            self.current_session.stuck_count = 0  # Reset stuck counter on successful action
+            
             return True
 
         except Exception as e:
@@ -336,28 +305,26 @@ class NavigationEngine:
                 center_x, center_y = self.screenshot_handler.calculate_center(
                     action.bounding_box, self.browser_manager.get_viewport_size()
                 )
-
+                
                 text = action.text_to_type or ""
-                press_enter = getattr(action, "press_enter", False)
-
+                press_enter = getattr(action, 'press_enter', False)
+                
                 # Use the enhanced type_text method with press_enter support
-                success = self.action_executor.type_text(
-                    center_x, center_y, text, press_enter=press_enter
-                )
-
+                success = self.action_executor.type_text(center_x, center_y, text, press_enter=press_enter)
+                
                 enter_msg = " and pressed Enter" if press_enter else ""
                 logger.info(f"Typed: {text}{enter_msg}")
                 return success
-
+                
             elif action.action_type == "press_key":
                 # Press a specific key (Enter, Tab, Escape, etc.)
-                key = getattr(action, "key_to_press", "Enter") or "Enter"
+                key = getattr(action, 'key_to_press', 'Enter') or 'Enter'
                 success = self.action_executor.press_key(key)
                 logger.info(f"Pressed key: {key}")
                 return success
-
+                
             elif action.action_type == "scroll":
-                direction = getattr(action, "scroll_direction", "down") or "down"
+                direction = getattr(action, 'scroll_direction', 'down') or 'down'
                 self.action_executor.scroll(direction=direction, amount=500)
                 logger.info(f"Scrolled {direction} 500px")
                 return True
@@ -366,12 +333,12 @@ class NavigationEngine:
                 logger.info("Waiting...")
                 time.sleep(1.0)
                 return True
-
+                
             elif action.action_type == "go_back":
                 logger.info("Going back to previous page")
                 success = self.action_executor.go_back()
                 return success
-
+                
             elif action.action_type == "done":
                 logger.info("Objective completed")
                 return True
@@ -417,7 +384,7 @@ class NavigationEngine:
             f"Duration: {duration:.1f}s, Steps: {session.step_count}, Errors: {session.error_count}"
         )
 
-        # Send Slack notification on completion
+        # Send Teams notification on completion
         self._send_completion_notification(session, duration)
 
         return session
@@ -425,7 +392,7 @@ class NavigationEngine:
     def _send_completion_notification(
         self, session: NavigationSession, duration: float
     ) -> None:
-        """Send Slack notification when session completes"""
+        """Send Teams notification when session completes"""
         # Determine severity and status based on final state
         if session.state == NavigationState.COMPLETED:
             severity = "P3" if not session.issues_detected else "P2"
@@ -459,7 +426,7 @@ class NavigationEngine:
         # Get last screenshot if available
         screenshot_path = session.screenshots[-1] if session.screenshots else None
 
-        self.slack_notifier.send_alert(
+        self.teams_notifier.send_alert(
             title=f"{status_emoji} Navigation Session {status_text} - {session.session_id}",
             description=description,
             severity=severity,
