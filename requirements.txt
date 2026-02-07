@@ -1,0 +1,21 @@
+# Browser Automation
+playwright>=1.40.0
+
+# AI/Vision (using new google.genai package)
+google-genai>=0.1.0
+
+# UI/Dashboard
+streamlit>=1.30.0
+
+# Alerting
+pymsteams>=0.2.2
+
+# Image Processing (using latest for Python 3.14 compatibility)
+pillow>=10.2.0
+
+# Environment Management
+python-dotenv>=1.0.0
+
+# Testing
+pytest>=7.4.3
+pytest-asyncio>=0.21.1

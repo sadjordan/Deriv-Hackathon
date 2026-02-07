@@ -1,0 +1,51 @@
+# PDFs
+*.pdf
+
+# Environment variables
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Playwright
+playwright-state.json
+.playwright/
+
+# Screenshots (keep directory but ignore contents)
+screenshots/*.png
+screenshots/*.jpg
+!screenshots/.gitkeep
+
+# Test cases
+testcases/saved/*.json
+testcases/results/
+!testcases/saved/.gitkeep
+!testcases/results/.gitkeep
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Streamlit
+.streamlit/secrets.toml
