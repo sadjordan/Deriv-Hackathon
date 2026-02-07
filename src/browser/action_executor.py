@@ -82,8 +82,6 @@ class ActionExecutor:
             # Wait for focus
             time.sleep(0.3)
             
-            # Clear any existing text in the field first to prevent double-typing
-            # Use Ctrl+A (or Cmd+A on Mac) to select all, then Backspace to clear
             self.page.keyboard.press('Meta+a')  # Cmd+A on Mac
             time.sleep(0.1)
             self.page.keyboard.press('Backspace')
