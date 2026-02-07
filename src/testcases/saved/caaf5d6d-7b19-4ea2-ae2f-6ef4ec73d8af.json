@@ -1,0 +1,13 @@
+{
+  "id": "caaf5d6d-7b19-4ea2-ae2f-6ef4ec73d8af",
+  "name": "Instagram",
+  "objective": "Create an instagram account",
+  "target_url": "https://instagram.com",
+  "persona": "normal_user",
+  "created_at": "2026-02-07T22:47:23.189900",
+  "last_run": "2026-02-07T22:52:10.117819",
+  "run_count": 3,
+  "last_result": "STUCK",
+  "tags": [],
+  "max_steps": 30
+}

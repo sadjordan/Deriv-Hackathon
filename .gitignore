@@ -59,3 +59,5 @@ sitemap/*.json
 
 # Session data
 screenshots/.session_*.json
+src/screenshots
+src/screenshots/.sessions

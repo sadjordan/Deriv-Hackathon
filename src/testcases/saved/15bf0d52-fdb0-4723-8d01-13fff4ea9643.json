@@ -1,0 +1,13 @@
+{
+  "id": "15bf0d52-fdb0-4723-8d01-13fff4ea9643",
+  "name": "Music 2",
+  "objective": "Search for and play the song history of man by Maisie Peters",
+  "target_url": "https://music.youtube.com",
+  "persona": "normal_user",
+  "created_at": "2026-02-07T23:06:07.236580",
+  "last_run": "2026-02-07T23:06:48.304762",
+  "run_count": 1,
+  "last_result": "FAIL",
+  "tags": [],
+  "max_steps": 30
+}

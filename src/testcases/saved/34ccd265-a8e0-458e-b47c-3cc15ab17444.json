@@ -1,0 +1,14 @@
+{
+  "id": "34ccd265-a8e0-458e-b47c-3cc15ab17444",
+  "name": "Hello2",
+  "objective": "Play the song hello",
+  "target_url": "https://music.youtube.com",
+  "persona": "normal_user",
+  "created_at": "2026-02-07T23:08:39.089063",
+  "last_run": "2026-02-07T23:22:13.443447",
+  "run_count": 3,
+  "last_result": "FAIL",
+  "tags": [],
+  "max_steps": 30,
+  "use_browserless": false
+}

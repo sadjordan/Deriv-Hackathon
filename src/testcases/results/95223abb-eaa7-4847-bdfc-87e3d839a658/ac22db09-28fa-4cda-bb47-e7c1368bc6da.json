@@ -1,0 +1,37 @@
+{
+  "test_case_id": "95223abb-eaa7-4847-bdfc-87e3d839a658",
+  "run_id": "ac22db09-28fa-4cda-bb47-e7c1368bc6da",
+  "timestamp": "2026-02-07T22:46:07.807887",
+  "status": "FAIL",
+  "steps_taken": 11,
+  "issues_found": [
+    {
+      "issue_id": "ISSUE-0001",
+      "title": "[P3] HTTP Error: Action failed: The current screen is blank, indicating no co",
+      "description": "Action failed: The current screen is blank, indicating no content is visible. I have already scrolled multiple times without success. Returning to the previous screen is the most logical next step to try and find a navigable element or correct the current state.",
+      "category": "TECHNICAL_ERROR",
+      "subcategory": "HTTP Error",
+      "severity": "P3",
+      "severity_score": "SeverityScore(severity=<Severity.P3_LOW: 'P3'>, confidence=0.6, reasoning='Minor issue with low impact', impact_description='Edge case or cosmetic issue', user_impact_percentage=10)",
+      "categorization": "CategorizedIssue(category=<IssueCategory.TECHNICAL_ERROR: 'TECHNICAL_ERROR'>, subcategory='HTTP Error', confidence=0.7, reasoning=\"Matched 1 keywords: ['failed']\", keywords_matched=['failed'])",
+      "step_number": 9,
+      "screenshot_path": "screenshots/session_1770475537_step_9_20260207_224605_511932.png",
+      "navigation_state": "navigating",
+      "error_count": 1,
+      "root_cause": "System error or broken functionality",
+      "recommended_fix": "Check server logs, fix API endpoint, or handle error gracefully",
+      "ai_analysis": null,
+      "detected_at": "2026-02-07 22:46:07.781110",
+      "metadata": "{'action_type': 'go_back', 'error_message': '', 'keywords_matched': ['failed']}"
+    }
+  ],
+  "duration_seconds": 30.431451320648193,
+  "screenshots": [
+    "screenshots/session_1770472776_step_8_20260207_220035_382110.png",
+    "screenshots/session_1770472066_step_14_20260207_214851_804646.png",
+    "screenshots/session_1770471743_step_10_20260207_214309_857473.png",
+    "screenshots/session_1770473219_step_10_20260207_220753_705538.png",
+    "screenshots/session_1770474689_step_2_20260207_223137_861845.png"
+  ],
+  "error_message": null
+}

@@ -1,0 +1,17 @@
+{
+  "test_case_id": "caaf5d6d-7b19-4ea2-ae2f-6ef4ec73d8af",
+  "run_id": "79ec21b3-704b-43a0-a786-a38e31ae0f31",
+  "timestamp": "2026-02-07T22:52:10.117819",
+  "status": "STUCK",
+  "steps_taken": 4,
+  "issues_found": [],
+  "duration_seconds": 21.85282874107361,
+  "screenshots": [
+    "screenshots/session_1770472776_step_8_20260207_220035_382110.png",
+    "screenshots/session_1770472066_step_14_20260207_214851_804646.png",
+    "screenshots/session_1770471743_step_10_20260207_214309_857473.png",
+    "screenshots/session_1770473219_step_10_20260207_220753_705538.png",
+    "screenshots/session_1770474689_step_2_20260207_223137_861845.png"
+  ],
+  "error_message": null
+}

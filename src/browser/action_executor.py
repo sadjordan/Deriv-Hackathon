@@ -59,7 +59,7 @@ class ActionExecutor:
             logger.error(f"Failed to click at ({x}, {y}): {e}")
             return False
     
-    def type_text(self, x: int, y: int, text: str) -> bool:
+    def type_text(self, x: int, y: int, text: str, press_enter: bool = False) -> bool:
         """
         Click at coordinates and type text
         
@@ -67,12 +67,13 @@ class ActionExecutor:
             x: X coordinate
             y: Y coordinate
             text: Text to type
+            press_enter: Whether to press Enter after typing
             
         Returns:
             True if action succeeded
         """
         try:
-            logger.info(f"Typing text at ({x}, {y}): '{text}'")
+            logger.info(f"Typing text at ({x}, {y}): '{text}'" + (" [+Enter]" if press_enter else ""))
             
             # Click to focus
             if not self.click(x, y, "input field"):
@@ -84,10 +85,67 @@ class ActionExecutor:
             # Type text character by character for more realistic input
             self.page.keyboard.type(text, delay=50)  # 50ms between keystrokes
             
+            # Press Enter if requested
+            if press_enter:
+                time.sleep(0.2)
+                self.page.keyboard.press('Enter')
+                time.sleep(0.5)
+            
             return True
             
         except Exception as e:
             logger.error(f"Failed to type text: {e}")
+            return False
+    
+    def press_key(self, key: str) -> bool:
+        """
+        Press a specific key (Enter, Tab, Escape, etc.)
+        
+        Args:
+            key: Key to press (Enter, Tab, Escape, Backspace, etc.)
+            
+        Returns:
+            True if action succeeded
+        """
+        try:
+            logger.info(f"Pressing key: {key}")
+            self.page.keyboard.press(key)
+            time.sleep(0.3)
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to press key '{key}': {e}")
+            return False
+    
+    def type_and_submit(self, x: int, y: int, text: str) -> bool:
+        """
+        Click at coordinates, type text, and press Enter to submit
+        
+        Args:
+            x: X coordinate
+            y: Y coordinate
+            text: Text to type
+            
+        Returns:
+            True if action succeeded
+        """
+        return self.type_text(x, y, text, press_enter=True)
+    
+    def go_back(self) -> bool:
+        """
+        Navigate to the previous page in browser history
+        
+        Returns:
+            True if action succeeded
+        """
+        try:
+            logger.info("Going back to previous page")
+            self.page.go_back(timeout=5000)
+            time.sleep(1.0)  # Wait for page to load
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to go back: {e}")
             return False
     
     def scroll(self, direction: str = "down", amount: int = 300) -> bool:

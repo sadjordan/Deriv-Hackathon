@@ -30,9 +30,18 @@ if "selected_tests" not in st.session_state:
     st.session_state.selected_tests = set()
 
 
-def run_test_case(test_case: TestCase) -> TestCaseResult:
-    """Execute a test case and return result"""
+def run_test_case(test_case: TestCase, use_browserless: bool = True) -> TestCaseResult:
+    """Execute a test case and return result
+    
+    Args:
+        test_case: The test case to run
+        use_browserless: Whether to use Docker Browserless for stealth
+    """
     from src.core.navigation_engine import NavigationEngine
+    from src.ui.shared_session import (
+        register_session, unregister_session, write_session_log, 
+        write_session_status, clear_session_data
+    )
     
     start_time = time.time()
     screenshots = []
@@ -40,6 +49,9 @@ def run_test_case(test_case: TestCase) -> TestCaseResult:
     status = TestStatus.ERROR
     error_msg = None
     steps = 0
+    
+    # Use test case ID as session ID for tracking
+    session_id = test_case.id
     
     try:
         api_key = os.getenv("GOOGLE_API_KEY")
@@ -53,7 +65,16 @@ def run_test_case(test_case: TestCase) -> TestCaseResult:
                 error_message="GOOGLE_API_KEY not set"
             )
         
-        engine = NavigationEngine(api_key)
+        # Clear previous session data and register new session
+        clear_session_data(session_id)
+        register_session(session_id, test_case.name, test_case.id)
+        write_session_status(session_id, running=True, step_count=0, issues=[])
+        write_session_log(session_id, f"Starting test: {test_case.name}", "action")
+        write_session_log(session_id, f"Objective: {test_case.objective}", "info")
+        browser_mode = "Browserless Docker" if use_browserless else "Local Chromium"
+        write_session_log(session_id, f"Browser mode: {browser_mode}", "info")
+        
+        engine = NavigationEngine(api_key, use_browserless=use_browserless)
         
         # Start session with the test case's objective
         session = engine.start_session(
@@ -63,10 +84,38 @@ def run_test_case(test_case: TestCase) -> TestCaseResult:
             max_errors=3
         )
         
+        write_session_log(session_id, f"Navigated to: {test_case.target_url}", "action")
+        
         # Run navigation loop
         while session.step_count < test_case.max_steps:
+            write_session_status(session_id, step_count=session.step_count + 1)
+            
             should_continue = engine.execute_step()
             steps = session.step_count
+            
+            # Log the action with full reasoning
+            if session.actions_taken:
+                last_action = session.actions_taken[-1]
+                action_type = last_action.action_type
+                full_reasoning = last_action.reasoning if last_action.reasoning else "No reasoning provided"
+                short_reasoning = full_reasoning[:50] + "..." if len(full_reasoning) > 50 else full_reasoning
+                
+                if action_type == "click":
+                    write_session_log(session_id, f"Clicking: {short_reasoning}", "click", full_reasoning)
+                elif action_type == "type":
+                    text_typed = last_action.text_to_type or ""
+                    write_session_log(session_id, f"Typing: {text_typed[:30]}", "type", full_reasoning)
+                elif action_type == "scroll":
+                    direction = getattr(last_action, 'scroll_direction', 'down')
+                    write_session_log(session_id, f"Scrolling {direction}", "scroll", full_reasoning)
+                elif action_type == "go_back":
+                    write_session_log(session_id, "Going back", "go_back", full_reasoning)
+                elif action_type == "done":
+                    write_session_log(session_id, "Objective completed!", "success", full_reasoning)
+                elif action_type == "stuck":
+                    write_session_log(session_id, "Agent is stuck", "error", full_reasoning)
+                else:
+                    write_session_log(session_id, f"{action_type}: {short_reasoning}", "thinking", full_reasoning)
             
             if not should_continue:
                 break
@@ -104,11 +153,19 @@ def run_test_case(test_case: TestCase) -> TestCaseResult:
         if screenshots_dir.exists():
             screenshots = [str(f) for f in screenshots_dir.glob("*.png")][-5:]
         
+        write_session_status(session_id, issues=issues, screenshots=screenshots)
+        write_session_log(session_id, f"Test completed: {status.value}", 
+                         "success" if status == TestStatus.PASS else "error")
+        
         engine.cleanup()
         
     except Exception as e:
         status = TestStatus.ERROR
         error_msg = str(e)
+        write_session_log(session_id, f"Error: {str(e)}", "error")
+    finally:
+        write_session_status(session_id, running=False)
+        unregister_session(session_id)
     
     duration = time.time() - start_time
     
@@ -159,6 +216,17 @@ with st.expander("➕ Create New Test Case", expanded=True):
         )
         tc_max_steps = st.slider("Max Steps", min_value=5, max_value=50, value=30)
         tc_tags = st.text_input("Tags (comma-separated)", placeholder="login, smoke, regression")
+        
+        # Single shared browserless setting (syncs with saved test cases section)
+        if "use_browserless" not in st.session_state:
+            st.session_state.use_browserless = True
+        use_browserless = st.checkbox(
+            "🐳 Docker Browserless",
+            value=st.session_state.use_browserless,
+            key="create_browserless",
+            help="Use local Docker Browserless (ws://localhost:3000) for stealth & bot detection bypass",
+            on_change=lambda: setattr(st.session_state, 'use_browserless', st.session_state.create_browserless)
+        )
     
     btn_col1, btn_col2, btn_col3 = st.columns([1, 1, 3])
     
@@ -171,12 +239,13 @@ with st.expander("➕ Create New Test Case", expanded=True):
                 target_url=tc_url,
                 persona=tc_persona,
                 tags=tags,
-                max_steps=tc_max_steps
+                max_steps=tc_max_steps,
+                use_browserless=use_browserless
             )
             store.save_test_case(test_case)
             
             with st.spinner(f"Running: {tc_name}..."):
-                result = run_test_case(test_case)
+                result = run_test_case(test_case, use_browserless=test_case.use_browserless)
                 store.save_result(result)
             
             if result.status == TestStatus.PASS.value:
@@ -195,10 +264,11 @@ with st.expander("➕ Create New Test Case", expanded=True):
                 target_url=tc_url,
                 persona=tc_persona,
                 tags=tags,
-                max_steps=tc_max_steps
+                max_steps=tc_max_steps,
+                use_browserless=use_browserless
             )
             store.save_test_case(test_case)
-            st.success(f"Saved: {tc_name}")
+            st.success(f"Saved: {tc_name} (Browserless: {'Yes' if use_browserless else 'No'})")
             st.rerun()
 
 st.divider()
@@ -207,6 +277,19 @@ st.divider()
 # SAVED TEST CASES
 # ============================================
 st.subheader("📁 Saved Test Cases")
+
+# Global settings for running saved tests (synced with create section)
+settings_col1, settings_col2 = st.columns([1, 4])
+with settings_col1:
+    if "use_browserless" not in st.session_state:
+        st.session_state.use_browserless = True
+    saved_use_browserless = st.checkbox(
+        "🐳 Browserless",
+        value=st.session_state.use_browserless,
+        key="saved_browserless",
+        help="Use Docker Browserless for test runs",
+        on_change=lambda: setattr(st.session_state, 'use_browserless', st.session_state.saved_browserless)
+    )
 
 test_cases = store.list_test_cases()
 
@@ -266,7 +349,9 @@ else:
         with row_col2:
             if st.button("▶️", key=f"run_{tc.id}", help="Run this test", type="primary"):
                 with st.spinner("Running..."):
-                    result = run_test_case(tc)
+                    # Use the test case's saved browserless setting
+                    tc_browserless = getattr(tc, 'use_browserless', True)
+                    result = run_test_case(tc, use_browserless=tc_browserless)
                     store.save_result(result)
                 st.rerun()
         
@@ -286,12 +371,33 @@ else:
                 if tc.tags:
                     st.markdown(" ".join([f"`{t}`" for t in tc.tags]))
                 
+                # Show browserless setting
+                tc_browserless = getattr(tc, 'use_browserless', True)
+                browserless_icon = "🐳" if tc_browserless else "💻"
+                st.caption(f"{browserless_icon} {'Docker Browserless' if tc_browserless else 'Local Chromium'}")
+                
                 st.markdown("---")
                 
-                # Delete button
-                if st.button("🗑️ Delete", key=f"del_{tc.id}"):
-                    store.delete_test_case(tc.id)
-                    st.rerun()
+                # Edit and Delete buttons
+                edit_col1, edit_col2, edit_col3 = st.columns([1, 1, 3])
+                
+                with edit_col1:
+                    # Toggle browserless for this test case
+                    new_browserless = st.checkbox(
+                        "🐳 Browserless",
+                        value=tc_browserless,
+                        key=f"bl_{tc.id}",
+                        help="Toggle Docker Browserless for this test"
+                    )
+                    if new_browserless != tc_browserless:
+                        tc.use_browserless = new_browserless
+                        store.save_test_case(tc)
+                        st.rerun()
+                
+                with edit_col2:
+                    if st.button("🗑️ Delete", key=f"del_{tc.id}"):
+                        store.delete_test_case(tc.id)
+                        st.rerun()
                 
                 # Show run history
                 history = store.get_run_history(tc.id)

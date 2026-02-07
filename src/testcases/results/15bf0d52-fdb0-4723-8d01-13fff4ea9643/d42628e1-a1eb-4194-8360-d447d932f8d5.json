@@ -1,0 +1,17 @@
+{
+  "test_case_id": "15bf0d52-fdb0-4723-8d01-13fff4ea9643",
+  "run_id": "d42628e1-a1eb-4194-8360-d447d932f8d5",
+  "timestamp": "2026-02-07T23:06:48.304762",
+  "status": "FAIL",
+  "steps_taken": 13,
+  "issues_found": [],
+  "duration_seconds": 34.12131595611572,
+  "screenshots": [
+    "screenshots/session_1770472776_step_8_20260207_220035_382110.png",
+    "screenshots/session_1770472066_step_14_20260207_214851_804646.png",
+    "screenshots/session_1770471743_step_10_20260207_214309_857473.png",
+    "screenshots/session_1770473219_step_10_20260207_220753_705538.png",
+    "screenshots/session_1770474689_step_2_20260207_223137_861845.png"
+  ],
+  "error_message": null
+}
