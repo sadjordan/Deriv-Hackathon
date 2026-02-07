@@ -47,8 +47,9 @@ class ScreenshotHandler:
         filename = f"{prefix}_{timestamp}.png"
         filepath = self.screenshots_dir / filename
         
-        # Capture screenshot
-        page.screenshot(path=str(filepath), full_page=True)
+        # Capture screenshot (viewport only, not full page)
+        # This ensures screenshot dimensions match viewport for accurate coordinate conversion
+        page.screenshot(path=str(filepath), full_page=False)
         logger.info(f"Screenshot captured: {filepath}")
         
         # Convert to base64
