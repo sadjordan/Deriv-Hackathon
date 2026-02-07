@@ -32,7 +32,7 @@ class ScreenshotHandler:
         self,
         page: Page,
         prefix: str = "screenshot"
-    ) -> Tuple[str, str]:
+    ) -> Tuple[Optional[str], Optional[str]]:
         """
         Capture current page state as screenshot
         
@@ -41,22 +41,48 @@ class ScreenshotHandler:
             prefix: Filename prefix for saved screenshot
             
         Returns:
-            Tuple of (file_path, base64_string)
+            Tuple of (file_path, base64_string) or (None, None) if failed
         """
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         filename = f"{prefix}_{timestamp}.png"
         filepath = self.screenshots_dir / filename
+        temp_filepath = self.screenshots_dir / f".temp_{filename}"
         
-        # Capture screenshot (viewport only, not full page)
-        # This ensures screenshot dimensions match viewport for accurate coordinate conversion
-        page.screenshot(path=str(filepath), full_page=False)
-        logger.info(f"Screenshot captured: {filepath}")
-        
-        # Convert to base64
-        with open(filepath, "rb") as image_file:
-            base64_string = base64.b64encode(image_file.read()).decode('utf-8')
-        
-        return str(filepath), base64_string
+        try:
+            # Capture screenshot to temp file first (atomic write)
+            # This ensures only complete files are visible to UI
+            page.screenshot(path=str(temp_filepath), full_page=False)
+            
+            # Rename temp file to final filename
+            if temp_filepath.exists():
+                temp_filepath.rename(filepath)
+                logger.info(f"Screenshot captured: {filepath}")
+            else:
+                logger.error("Screenshot temp file not created")
+                return None, None
+            
+            # Convert to base64
+            with open(filepath, "rb") as image_file:
+                base64_string = base64.b64encode(image_file.read()).decode('utf-8')
+            
+            return str(filepath), base64_string
+            
+        except Exception as e:
+            # Handle browser closed/disconnected errors
+            error_msg = str(e)
+            if "Target page, context or browser has been closed" in error_msg:
+                logger.error(f"Screenshot failed - target closed: {e}")
+            else:
+                logger.error(f"Screenshot capture failed: {e}")
+                
+            # Cleanup temp file if exists
+            if temp_filepath.exists():
+                try:
+                    temp_filepath.unlink()
+                except:
+                    pass
+                    
+            return None, None
     
     def draw_bounding_box(
         self,

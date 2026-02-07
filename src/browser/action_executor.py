@@ -82,8 +82,15 @@ class ActionExecutor:
             # Wait for focus
             time.sleep(0.3)
             
-            # Type text character by character for more realistic input
-            self.page.keyboard.type(text, delay=50)  # 50ms between keystrokes
+            # Clear any existing text in the field first to prevent double-typing
+            # Use Ctrl+A (or Cmd+A on Mac) to select all, then Backspace to clear
+            self.page.keyboard.press('Meta+a')  # Cmd+A on Mac
+            time.sleep(0.1)
+            self.page.keyboard.press('Backspace')
+            time.sleep(0.1)
+            
+            # Type text with faster delay to reduce autocomplete interference
+            self.page.keyboard.type(text, delay=30)  # 30ms between keystrokes
             
             # Press Enter if requested
             if press_enter:

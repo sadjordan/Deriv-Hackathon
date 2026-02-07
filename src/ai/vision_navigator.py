@@ -81,7 +81,9 @@ class GeminiVisionNavigator:
         self,
         screenshot_base64: str,
         objective: str,
-        persona: str = "normal_user"
+        persona: str = "normal_user",
+        website_context: str = "",
+        previous_actions: List[str] = None
     ) -> NavigationAction:
         """
         Analyze screenshot and determine next action
@@ -90,12 +92,14 @@ class GeminiVisionNavigator:
             screenshot_base64: Base64 encoded screenshot
             objective: What the agent should accomplish
             persona: User persona for context
+            website_context: Context summary of the website
+            previous_actions: List of previous actions taken
             
         Returns:
             NavigationAction object
         """
         # Build prompt
-        prompt = self._build_navigation_prompt(objective, persona)
+        prompt = self._build_navigation_prompt(objective, persona, website_context, previous_actions)
         
         try:
             # Call Gemini API with retry logic
@@ -348,7 +352,7 @@ class GeminiVisionNavigator:
         }
     }
     
-    def _build_navigation_prompt(self, objective: str, persona: str) -> str:
+    def _build_navigation_prompt(self, objective: str, persona: str, website_context: str = "", previous_actions: List[str] = None) -> str:
         """Build the navigation prompt for Gemini"""
         
         persona_data = self.PERSONA_PROFILES.get(persona, self.PERSONA_PROFILES["normal_user"])
@@ -359,117 +363,62 @@ class GeminiVisionNavigator:
         profile_text = f"""
 YOUR PERSONAL DETAILS (use these when filling forms):
 - Name: {profile['full_name']}
-- First Name: {profile['first_name']}
-- Last Name: {profile['last_name']}
 - Email: {profile['email']}
 - Phone: {profile['phone']}
-- Date of Birth: {profile['date_of_birth']} (Age: {profile['age']})
-- Gender: {profile['gender']}
-- Address: {profile['address']}
-- City: {profile['city']}, {profile['state']} {profile['zip_code']}
-- Country: {profile['country']}
-- Occupation: {profile['occupation']}
+- Address: {profile['address']}, {profile['city']}, {profile['state']} {profile['zip_code']}
 - Username: {profile['username']}
 - Password: {profile['password']}
 """
+
+        # Format previous actions
+        prev_actions_text = "None yet."
+        if previous_actions and len(previous_actions) > 0:
+            formatted_actions = []
+            for i, action in enumerate(previous_actions[-15:]):  # Show last 15 actions
+                formatted_actions.append(f"Step {len(previous_actions) - len(previous_actions[-15:]) + i + 1}: {action}")
+            prev_actions_text = "\n".join(formatted_actions)
         
-        return f"""You are a QA automation bot analyzing a mobile app screenshot.
+        return f"""You are an autonomous QA testing agent navigating a mobile website.
+        
+WEBSITE CONTEXT:
+{website_context}
+
+OBJECTIVE: {objective}
 
 PERSONA: {persona_desc}
 {profile_text}
 
-OBJECTIVE: {objective}
+PREVIOUS ACTIONS (Review carefully to avoid loops):
+{prev_actions_text}
 
 TASK: Analyze the screenshot and determine the next action to accomplish the objective.
 
-CRITICAL - COMMON UI PATTERNS (use these strategies):
-1. **SEARCH**: Most sites have a search bar at the TOP of the page. If you need to find something:
-   - First scroll UP to see the full page header
-   - Look for search icons (🔍), text fields with "Search" placeholder, or magnifying glass buttons
-   - Click the search field, type your query, then press Enter
-   
-2. **NAVIGATION**: Headers usually contain menus, categories, account links
-   - If lost, scroll to TOP and look for navigation menus
-   - Main categories are often in the header or hamburger menu (☰)
-   
-3. **FORMS**: Fill fields in order from top to bottom
-   - After the last field, look for Submit/Continue/Next button
-   
-4. **PRODUCT SEARCH FLOW**: 
-   - Find search bar → Type product name → Press Enter → Browse results → Click product → Add to cart
+CRITICAL - LOOP PREVENTION & STUCK HANDLING:
+1. **REVIEW PREVIOUS ACTIONS**: If you see repetitive actions (e.g., scrolling down multiple times with no result, or clicking the same button twice), STOP.
+2. **TRY ALTERNATIVES**:
+   - If "scroll down" failed 3 times, try "scroll up" to find headers/menus.
+   - If clicking a text link failed, look for an ICON instead.
+   - If a form didn't submit, check for validation errors or a different "Submit" button.
+3. **USE VISUAL CLUES**:
+   - Look for **ICONS**: 🔍 (Search), 👤 (Profile/Login), ☰ (Menu/Hamburger), 🛒 (Cart).
+   - Sign In/Login is often in the header (top right) or inside the Hamburger menu.
+   - Search bars often have a magnifying glass icon or placeholder text.
 
-INFINITE LOOP PREVENTION:
-- If you've done the SAME ACTION 2+ times in a row, STOP and try something different
-- If scrolling repeatedly without finding what you need, try scrolling in the OPPOSITE direction
-- If you're on the wrong page, use "go_back" to return to the previous screen
-- If nothing works after 3 different attempts, respond with "stuck"
+COMMON UI PATTERNS:
+1. **SEARCH**: Look at the TOP of the page. Click the search bar/icon, type query, press Enter.
+2. **NAVIGATION**: Main menu is usually a Hamburger icon (☰) at top-left or top-right.
+3. **FORMS**: Fill top-to-bottom. If no "Submit" button is visible, try pressing Enter after the last field.
 
-CRITICAL - COMPLETION DETECTION:
-Before taking any action, FIRST check if the objective has ALREADY been achieved:
-
-SIGNS THE OBJECTIVE IS COMPLETE (respond with "done"):
-- Success messages: "Thank you", "Welcome", "Account created", "Registration complete"
-- Confirmation screens: Check marks, success icons, celebration graphics
-- Order confirmation, payment success, "Added to cart" confirmation
-- Profile page or account settings visible after registration
-
-SIGNS YOU ARE STUCK (respond with "stuck"):
-- Error messages that persist after retrying
-- CAPTCHA or security challenges you cannot solve
-- Login walls requiring real credentials
-- Same screen after 3+ attempts at the same action
-
-RULES:
-1. You can ONLY interact via coordinates - no CSS selectors or DOM inspection
-2. For clickable elements, provide the bounding box in format [ymin, xmin, ymax, xmax] on a 0-1000 scale
-3. If you need to type text into a form field, use YOUR PERSONAL DETAILS above
-4. Match the field label to the appropriate personal detail (e.g., "Email" → use your email)
-5. ALWAYS check for completion BEFORE taking another action
-6. DO NOT repeat the same action more than twice - try something different
-
-WHEN TO SET press_enter TO TRUE:
-- Search fields (after typing a search query)
-- Login forms with only username/password visible (submit after password)
-- Single-field forms (e.g., email signup, verification codes)
-- When there's no visible "Submit" or "Next" button
-- Chat/message input fields (to send the message)
-
-WHEN TO KEEP press_enter AS FALSE:
-- Multi-step forms where you need to fill more fields
-- When there's a clear "Submit", "Next", or "Continue" button visible
-
-AVAILABLE ACTIONS:
-- "click" - Tap on a button or link
-- "type" - Type text into a field (set press_enter: true to submit after typing)
-- "press_key" - Press a key (Enter, Tab, Escape) without typing text
-- "scroll" - Scroll the page (set scroll_direction: "up" or "down")
-- "go_back" - Navigate to the PREVIOUS PAGE (use when you made a wrong turn)
-- "wait" - Wait for something to load
-- "done" - OBJECTIVE IS COMPLETE - use this when you see success indicators
-- "stuck" - Cannot proceed due to blockers
-
-WHEN TO USE go_back:
-- You clicked a wrong button/link and ended up on an unexpected page
-- You need to return to a previous form or screen
-- There's no visible "Back" or "Cancel" button on the page
-
-IMPORTANT - SCROLL DIRECTION:
-- "up" - Scroll UP to see page header, search bars, navigation menus
-- "down" - Scroll DOWN to see more content, forms, buttons below
-
-RESPONSE FORMAT (JSON):
+RESPONSE FORMAT (JSON ONLY):
 {{
   "action_type": "click|type|press_key|scroll|go_back|wait|done|stuck",
   "bounding_box": [ymin, xmin, ymax, xmax],
   "text_to_type": "text content if action is type",
   "press_enter": true/false,
-  "key_to_press": "Enter|Tab|Escape (only if action_type is press_key)",
-  "scroll_direction": "up|down (only if action_type is scroll)",
-  "reasoning": "Brief explanation of why you're taking this action",
+  "scroll_direction": "up|down",
+  "reasoning": "Brief explanation. IF REPEATING AN ACTION, EXPLAIN WHY.",
   "confidence": 0.0-1.0
-}}
-
-Analyze the screenshot and respond with JSON only."""
+}}"""
     
     def _build_diagnosis_prompt(self, context: str, network_logs: Optional[List[dict]]) -> str:
         """Build the diagnosis prompt"""

@@ -362,8 +362,12 @@ with left_col:
     
     screenshot_path = get_latest_screenshot()
     if screenshot_path:
-        st.image(screenshot_path, width=400)
-        st.caption(f"Latest: {Path(screenshot_path).name}")
+        try:
+            st.image(screenshot_path, width=400)
+            st.caption(f"Latest: {Path(screenshot_path).name}")
+        except Exception as e:
+            st.error(f"Error loading screenshot: {e}")
+            st.info("Waiting for next valid screenshot...")
     else:
         st.info("No screenshots yet. Start a session to begin.")
 

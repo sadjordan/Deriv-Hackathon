@@ -14,6 +14,7 @@ from src.browser.playwright_manager import BrowserManager
 from src.browser.action_executor import ActionExecutor
 from src.vision.screenshot_handler import ScreenshotHandler
 from src.ai.vision_navigator import GeminiVisionNavigator, NavigationAction
+from src.ai.website_analyzer import WebsiteContextAnalyzer
 from src.diagnostics.issue_detector import IssueDetector, DetectedIssue
 
 logger = logging.getLogger(__name__)
@@ -48,6 +49,7 @@ class NavigationSession:
     state_transitions: List[Dict[str, Any]] = field(default_factory=list)
     completion_reason: Optional[str] = None
     issues_detected: List[Dict[str, Any]] = field(default_factory=list)  # For Phase 3
+    website_context: str = ""  # Store initial website analysis
 
 
 class NavigationEngine:
@@ -66,6 +68,7 @@ class NavigationEngine:
         self.action_executor: Optional[ActionExecutor] = None
         self.screenshot_handler: Optional[ScreenshotHandler] = None
         self.vision_navigator = GeminiVisionNavigator(google_api_key)
+        self.website_analyzer = WebsiteContextAnalyzer(self.vision_navigator)
         self.issue_detector = IssueDetector(google_api_key)  # Phase 3: Issue detection
         self.current_session: Optional[NavigationSession] = None
         
@@ -125,6 +128,23 @@ class NavigationEngine:
         
         # Navigate to URL
         self.browser_manager.navigate(url)
+        
+        # Analyze website context (Initial Stage)
+        try:
+            # Capture initial screenshot for analysis
+            screenshot_path, screenshot_b64 = self.screenshot_handler.capture_state(
+                page=self.browser_manager.page,
+                prefix=f"{session_id}_initial_context"
+            )
+            
+            if screenshot_b64:
+                logger.info("Analyzing website context...")
+                context = self.website_analyzer.analyze_landing_page(screenshot_b64, url)
+                self.current_session.website_context = context
+                logger.info(f"Website Context: {context[:100]}...")
+        except Exception as e:
+            logger.warning(f"Failed to analyze website context: {e}")
+            
         self._transition_state(NavigationState.NAVIGATING, "Session started")
         
         return self.current_session
@@ -162,21 +182,53 @@ class NavigationEngine:
                 page=self.browser_manager.page,
                 prefix=f"{self.current_session.session_id}_step_{step}"
             )
+            
+            # Check for screenshot failure (e.g. browser closed)
+            if screenshot_path is None or screenshot_b64 is None:
+                logger.warning("Screenshot capture failed, attempting to recover browser...")
+                try:
+                    # Attempt recovery
+                    current_url = self.current_session.url
+                    self.browser_manager.close()
+                    self.browser_manager.start()
+                    self.browser_manager.navigate(current_url)
+                    logger.info("Browser reconnected successfully")
+                    
+                    # Retry screenshot
+                    screenshot_path, screenshot_b64 = self.screenshot_handler.capture_state(
+                        page=self.browser_manager.page,
+                        prefix=f"{self.current_session.session_id}_step_{step}_retry"
+                    )
+                    
+                    if screenshot_path is None:
+                        # Second attempt failed
+                        self._transition_state(NavigationState.ERROR, "Failed to capture screenshot after recovery")
+                        return False
+                        
+                except Exception as e:
+                    logger.error(f"Failed to recover from screenshot error: {e}")
+                    self._transition_state(NavigationState.ERROR, f"Browser error: {e}")
+                    return False
+
             self.current_session.screenshots.append(screenshot_path)
             logger.info(f"Screenshot: {screenshot_path}")
             
             # 2. Get AI decision
             # Build context with step history for better completion detection
-            step_history = ""
+            step_history_list = []
             if len(self.current_session.actions_taken) > 0:
-                recent_actions = self.current_session.actions_taken[-5:]  # Last 5 actions
-                step_history = "\n\nPREVIOUS ACTIONS TAKEN:\n"
-                for i, prev_action in enumerate(recent_actions):
-                    step_history += f"- Step {step - len(recent_actions) + i}: {prev_action.action_type} - {prev_action.reasoning[:50]}\n"
+                recent_actions = self.current_session.actions_taken  # Pass all actions to let navigator filter
+                for prev_action in recent_actions:
+                    step_history_list.append(f"{prev_action.action_type} - {prev_action.reasoning[:50]}")
+            
+            # Use website context if available
+            website_context = getattr(self.current_session, 'website_context', "")
             
             action = self.vision_navigator.get_next_action(
                 screenshot_b64,
-                f"Objective: {self.current_session.objective}\n\nCurrent Step: {step} of max {self.current_session.step_count + 10}\n{step_history}\n\nAnalyze the current screenshot - has the objective been achieved? If yes, respond with 'done'. Otherwise, what should I do next?"
+                objective=self.current_session.objective,
+                website_context=website_context,
+                previous_actions=step_history_list
             )
             
             logger.info(f"AI action: {action.action_type}")

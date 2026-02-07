@@ -132,12 +132,12 @@ class BrowserManager:
     
     def _start_local(self) -> Page:
         """
-        Start local browser with desktop viewport (1920x1080)
+        Start local browser with iPhone 13 mobile viewport and touchscreen
         
         Returns:
             Page: Playwright page object
         """
-        logger.info("Starting local Playwright browser with 1920x1080 desktop viewport")
+        logger.info("Starting local Playwright browser with iPhone 13 mobile viewport")
         
         # Launch Chromium browser locally
         self.browser = self.playwright.chromium.launch(
@@ -149,17 +149,20 @@ class BrowserManager:
             ]
         )
         
-        # Desktop viewport configuration (1920x1080)
-        viewport = {'width': 1920, 'height': 1080}
+        # iPhone 13 viewport configuration (390x844)
+        viewport = {'width': 390, 'height': 844}
         
-        # Create context with desktop configuration
+        # Create context with iPhone 13 mobile configuration and touchscreen
         self.context = self.browser.new_context(
             viewport=viewport,
-            user_agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            user_agent='Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1',
             locale='en-US',
             timezone_id='America/New_York',
             permissions=['geolocation'],
             accept_downloads=False,
+            has_touch=True,  # Enable touchscreen for mobile gestures
+            is_mobile=True,  # Enable mobile mode
+            device_scale_factor=3,  # iPhone 13 has 3x pixel density
         )
         
         # Enable network interception for monitoring
