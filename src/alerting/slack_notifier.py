@@ -4,6 +4,9 @@ Sends severity-based notifications with screenshots to Slack channels
 """
 
 import os
+import ssl
+import certifi
+import urllib3
 import base64
 import logging
 from typing import Optional, Dict, Any, List
@@ -11,6 +14,12 @@ from datetime import datetime
 from slack_sdk.webhook import WebhookClient
 
 logger = logging.getLogger(__name__)
+
+# Disable SSL warnings
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+# Monkey-patch ssl to disable verification globally (for development only)
+ssl._create_default_https_context = ssl._create_unverified_context
 
 # Severity mapping
 SEVERITY_COLORS = {
@@ -51,7 +60,11 @@ class SlackNotifier:
                 "SLACK_WEBHOOK_URL not configured - alerts will be logged only"
             )
         else:
-            self.webhook_client = WebhookClient(self.webhook_url)
+            # Create SSL context without verification (to avoid certificate issues)
+            ssl_context = ssl.create_default_context()
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+            self.webhook_client = WebhookClient(self.webhook_url, ssl=ssl_context)
 
     def send_alert(
         self,

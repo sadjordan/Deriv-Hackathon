@@ -13,6 +13,7 @@ requests>=2.28.0
 
 # Alerting
 slack-sdk>=3.21.0
+certifi>=2024.0.0
 
 # Image Processing (using latest for Python 3.14 compatibility)
 pillow>=10.2.0

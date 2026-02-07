@@ -242,6 +242,15 @@ def run_navigation_session(
         engine = NavigationEngine(api_key, use_browserless=use_browserless)
         notifier = SlackNotifier()
 
+        # Send pre-warm message on session start
+        notifier.send_alert(
+            title="Session Started",
+            description="Session started, waiting for command",
+            severity="P3",
+            category="Session",
+        )
+        write_log("Sent pre-warm notification to Slack", "info")
+
         # Start session
         session = engine.start_session(
             url=url, objective=objective, max_steps=max_steps, max_errors=3
