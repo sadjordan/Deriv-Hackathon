@@ -1,7 +1,7 @@
 """
-Alerting module for Microsoft Teams integration
+Alerting module for Slack integration
 """
 
-from .teams_notifier import TeamsNotifier
+from .slack_notifier import SlackNotifier
 
-__all__ = ["TeamsNotifier"]
+__all__ = ["SlackNotifier"]
