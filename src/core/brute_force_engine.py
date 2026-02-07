@@ -70,7 +70,8 @@ class BruteForceEngine:
         from src.ai.vision_navigator import GeminiVisionNavigator
         from src.diagnostics.brute_force_logger import BruteForceLogger
         
-        self.browser_manager = BrowserManager()
+        self.browser_manager = BrowserManager(headless=True)
+        self.browser_manager.start()  # Must call start() before navigate()
         self.screenshot_handler = ScreenshotHandler()
         self.vision_navigator = GeminiVisionNavigator(api_key=self.api_key)
         self.element_discovery = ElementDiscovery(self.vision_navigator)

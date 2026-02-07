@@ -49,3 +49,13 @@ Thumbs.db
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Brute force logs (runtime data)
+brute_force_logs/
+
+# Sitemap cache
+sitemap/*.json
+!sitemap/.gitkeep
+
+# Session data
+screenshots/.session_*.json

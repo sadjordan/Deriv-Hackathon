@@ -133,28 +133,23 @@ If no interactive elements are found, return an empty array: []"""
     def _call_gemini(self, screenshot_base64: str) -> str:
         """Send discovery prompt to Gemini"""
         try:
-            # Use the navigator's client to call Gemini
-            from google import genai
-            from google.genai import types
-            
+            # Use same dict format as vision_navigator
             response = self.navigator.client.models.generate_content(
                 model=self.navigator.model_name,
                 contents=[
-                    types.Content(
-                        role="user",
-                        parts=[
-                            types.Part.from_text(self.DISCOVERY_PROMPT),
-                            types.Part.from_bytes(
-                                data=self._decode_base64(screenshot_base64),
-                                mime_type="image/png"
-                            )
+                    {
+                        "role": "user",
+                        "parts": [
+                            {"text": self.DISCOVERY_PROMPT},
+                            {
+                                "inline_data": {
+                                    "mime_type": "image/png",
+                                    "data": self._clean_base64(screenshot_base64)
+                                }
+                            }
                         ]
-                    )
-                ],
-                config=types.GenerateContentConfig(
-                    temperature=0.1,
-                    max_output_tokens=4096
-                )
+                    }
+                ]
             )
             
             return response.text
@@ -162,6 +157,12 @@ If no interactive elements are found, return an empty array: []"""
         except Exception as e:
             logger.error(f"Gemini API call failed: {e}")
             raise
+    
+    def _clean_base64(self, base64_string: str) -> str:
+        """Clean base64 string - remove data URL prefix if present"""
+        if "," in base64_string:
+            return base64_string.split(",")[1]
+        return base64_string
     
     def _decode_base64(self, base64_string: str) -> bytes:
         """Decode base64 string to bytes"""
