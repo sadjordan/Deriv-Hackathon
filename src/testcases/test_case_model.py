@@ -35,6 +35,7 @@ class TestCase:
     last_result: Optional[str] = None  # TestStatus value
     tags: List[str] = field(default_factory=list)
     max_steps: int = 30
+    use_browserless: bool = True      # Whether to use Docker Browserless
     
     @classmethod
     def create(
@@ -44,7 +45,8 @@ class TestCase:
         target_url: str,
         persona: str = "normal_user",
         tags: Optional[List[str]] = None,
-        max_steps: int = 30
+        max_steps: int = 30,
+        use_browserless: bool = True
     ) -> "TestCase":
         """Factory method to create a new test case"""
         return cls(
@@ -55,7 +57,8 @@ class TestCase:
             persona=persona,
             created_at=datetime.now(),
             tags=tags or [],
-            max_steps=max_steps
+            max_steps=max_steps,
+            use_browserless=use_browserless
         )
     
     def to_dict(self) -> dict:

@@ -1,0 +1,13 @@
+{
+  "id": "e405948e-7407-41cd-ac46-a64b9e31a5aa",
+  "name": "Buy Nerf Gun",
+  "objective": "I wanna buy a nerf gun from shopee, please review the review and rating first before placing any order.",
+  "target_url": "https://www.shopee.com",
+  "persona": "normal_user",
+  "created_at": "2026-02-07T22:31:23.619264",
+  "last_run": "2026-02-07T22:46:33.097724",
+  "run_count": 3,
+  "last_result": "STUCK",
+  "tags": [],
+  "max_steps": 30
+}

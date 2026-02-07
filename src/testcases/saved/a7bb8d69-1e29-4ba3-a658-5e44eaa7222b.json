@@ -1,0 +1,13 @@
+{
+  "id": "a7bb8d69-1e29-4ba3-a658-5e44eaa7222b",
+  "name": "Hello",
+  "objective": "Play the song hello",
+  "target_url": "https://music.youtube.com",
+  "persona": "normal_user",
+  "created_at": "2026-02-07T23:07:39.246452",
+  "last_run": "2026-02-07T23:08:25.754818",
+  "run_count": 1,
+  "last_result": "PASS",
+  "tags": [],
+  "max_steps": 30
+}

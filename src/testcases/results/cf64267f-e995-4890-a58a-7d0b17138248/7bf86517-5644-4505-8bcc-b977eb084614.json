@@ -1,0 +1,37 @@
+{
+  "test_case_id": "cf64267f-e995-4890-a58a-7d0b17138248",
+  "run_id": "7bf86517-5644-4505-8bcc-b977eb084614",
+  "timestamp": "2026-02-07T23:07:24.774731",
+  "status": "FAIL",
+  "steps_taken": 3,
+  "issues_found": [
+    {
+      "issue_id": "ISSUE-0001",
+      "title": "[P3] HTTP Error: Action failed: The objective is to find 'jkhsagcjewgfkheafck",
+      "description": "Action failed: The objective is to find 'jkhsagcjewgfkheafckj'. Since this is a search query, I will type it into the search bar and press Enter to initiate the search.",
+      "category": "TECHNICAL_ERROR",
+      "subcategory": "HTTP Error",
+      "severity": "P3",
+      "severity_score": "SeverityScore(severity=<Severity.P3_LOW: 'P3'>, confidence=0.6, reasoning='Minor issue with low impact', impact_description='Edge case or cosmetic issue', user_impact_percentage=10)",
+      "categorization": "CategorizedIssue(category=<IssueCategory.TECHNICAL_ERROR: 'TECHNICAL_ERROR'>, subcategory='HTTP Error', confidence=0.7, reasoning=\"Matched 1 keywords: ['failed']\", keywords_matched=['failed'])",
+      "step_number": 1,
+      "screenshot_path": "screenshots/session_1770476836_step_1_20260207_230721_017670.png",
+      "navigation_state": "navigating",
+      "error_count": 1,
+      "root_cause": "System error or broken functionality",
+      "recommended_fix": "Check server logs, fix API endpoint, or handle error gracefully",
+      "ai_analysis": null,
+      "detected_at": "2026-02-07 23:07:24.644091",
+      "metadata": "{'action_type': 'type', 'error_message': '', 'keywords_matched': ['failed']}"
+    }
+  ],
+  "duration_seconds": 8.279632329940796,
+  "screenshots": [
+    "screenshots/session_1770472776_step_8_20260207_220035_382110.png",
+    "screenshots/session_1770472066_step_14_20260207_214851_804646.png",
+    "screenshots/session_1770471743_step_10_20260207_214309_857473.png",
+    "screenshots/session_1770473219_step_10_20260207_220753_705538.png",
+    "screenshots/session_1770474689_step_2_20260207_223137_861845.png"
+  ],
+  "error_message": null
+}

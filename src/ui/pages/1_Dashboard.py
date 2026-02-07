@@ -22,6 +22,13 @@ load_dotenv()
 # Add src to path (go up from pages -> ui -> src)
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
+# Import shared session tracking
+from src.ui.shared_session import (
+    read_active_sessions, get_running_sessions, read_session_logs, 
+    read_session_status, write_session_log, write_session_status,
+    register_session, unregister_session, clear_session_data as clear_shared_session
+)
+
 # Try to import autorefresh, fall back to manual refresh
 try:
     from streamlit_autorefresh import st_autorefresh
@@ -50,8 +57,14 @@ def read_logs() -> list:
     return []
 
 
-def write_log(message: str, log_type: str = "info"):
-    """Write log to file (safe to call from any thread)"""
+def write_log(message: str, log_type: str = "info", reasoning: str = ""):
+    """Write log to file (safe to call from any thread)
+    
+    Args:
+        message: The log message to display
+        log_type: Type of log (info, action, success, error, thinking, click, type, scroll)
+        reasoning: Optional AI reasoning/justification for this action (shown on hover)
+    """
     ensure_dirs()
     timestamp = datetime.now().strftime("%H:%M:%S")
     
@@ -63,11 +76,20 @@ def write_log(message: str, log_type: str = "info"):
         "thinking": "🤔",
         "click": "👆",
         "type": "⌨️",
-        "scroll": "📜"
+        "scroll": "📜",
+        "go_back": "⬅️"
     }
     
     emoji = type_emoji.get(log_type, "•")
-    entry = f"[{timestamp}] {emoji} {message}"
+    
+    # Store as dict with message and reasoning
+    entry = {
+        "timestamp": timestamp,
+        "emoji": emoji,
+        "message": message,
+        "reasoning": reasoning,
+        "type": log_type
+    }
     
     # Read existing logs
     logs = read_logs()
@@ -128,13 +150,49 @@ def clear_session_data():
 # Initialize session state for UI-only state
 if "ui_running" not in st.session_state:
     st.session_state.ui_running = False
+if "selected_session" not in st.session_state:
+    st.session_state.selected_session = "dashboard"  # Default to dashboard session
 
-# Read current status from file
-current_status = read_status()
-current_logs = read_logs()
+# Get all active sessions (including from Test Cases page)
+all_sessions = read_active_sessions()
+running_sessions = get_running_sessions()
 
-# Auto-refresh every 2 seconds when session is running
-if current_status.get("running", False) and HAS_AUTOREFRESH:
+# Build session options for dropdown - running sessions first
+session_options = {}
+# Add running sessions first (so they appear at top)
+for sid, info in running_sessions.items():
+    session_options[sid] = f"🟢 {info.get('name', sid)[:30]}"
+# Add dashboard option
+session_options["dashboard"] = "🖥️ Dashboard Session"
+# Add non-running sessions
+for sid, info in all_sessions.items():
+    if sid not in running_sessions:
+        session_options[sid] = f"⚪ {info.get('name', sid)[:30]}"
+
+# Auto-select first running test case session if available and not manually selected
+if running_sessions and st.session_state.selected_session == "dashboard":
+    # Auto-switch to first running session
+    first_running = list(running_sessions.keys())[0]
+    st.session_state.selected_session = first_running
+
+# Read current status and logs based on selected session
+selected_session_id = st.session_state.selected_session
+if selected_session_id == "dashboard":
+    current_status = read_status()
+    current_logs = read_logs()
+elif selected_session_id in all_sessions or selected_session_id in running_sessions:
+    current_status = read_session_status(selected_session_id)
+    current_logs = read_session_logs(selected_session_id)
+else:
+    # Session no longer exists, fall back to dashboard
+    st.session_state.selected_session = "dashboard"
+    selected_session_id = "dashboard"
+    current_status = read_status()
+    current_logs = read_logs()
+
+# Auto-refresh every 2 seconds when any session is running
+any_running = current_status.get("running", False) or len(running_sessions) > 0
+if any_running and HAS_AUTOREFRESH:
     st_autorefresh(interval=2000, limit=None, key="autorefresh")
 
 
@@ -151,7 +209,7 @@ def get_latest_screenshot() -> str:
     return str(max(files, key=os.path.getctime))
 
 
-def run_navigation_session(url: str, persona: str, objective: str, max_steps: int):
+def run_navigation_session(url: str, persona: str, objective: str, max_steps: int, use_browserless: bool = False):
     """Run navigation in background thread"""
     try:
         from src.core.navigation_engine import NavigationEngine
@@ -168,7 +226,7 @@ def run_navigation_session(url: str, persona: str, objective: str, max_steps: in
             write_status(running=False)
             return
             
-        engine = NavigationEngine(api_key)
+        engine = NavigationEngine(api_key, use_browserless=use_browserless)
         notifier = TeamsNotifier()
         
         # Start session
@@ -188,22 +246,29 @@ def run_navigation_session(url: str, persona: str, objective: str, max_steps: in
             
             should_continue = engine.execute_step()
             
-            # Log the action
+            # Log the action with full reasoning
             if session.actions_taken:
                 last_action = session.actions_taken[-1]
                 action_type = last_action.action_type
-                reasoning = last_action.reasoning[:60] if last_action.reasoning else "..."
+                full_reasoning = last_action.reasoning if last_action.reasoning else "No reasoning provided"
+                short_reasoning = full_reasoning[:50] + "..." if len(full_reasoning) > 50 else full_reasoning
                 
                 if action_type == "click":
-                    write_log(f"Clicking: {reasoning}", "click")
+                    write_log(f"Clicking: {short_reasoning}", "click", full_reasoning)
                 elif action_type == "type":
-                    write_log(f"Typing: {last_action.text_to_type}", "type")
+                    text_typed = last_action.text_to_type or ""
+                    write_log(f"Typing: {text_typed[:30]}", "type", full_reasoning)
                 elif action_type == "scroll":
-                    write_log("Scrolling page", "scroll")
+                    direction = getattr(last_action, 'scroll_direction', 'down')
+                    write_log(f"Scrolling {direction}", "scroll", full_reasoning)
+                elif action_type == "go_back":
+                    write_log("Going back", "go_back", full_reasoning)
                 elif action_type == "done":
-                    write_log("Objective completed!", "success")
+                    write_log("Objective completed!", "success", full_reasoning)
+                elif action_type == "stuck":
+                    write_log("Agent is stuck", "error", full_reasoning)
                 else:
-                    write_log(f"{action_type}: {reasoning}", "thinking")
+                    write_log(f"{action_type}: {short_reasoning}", "thinking", full_reasoning)
             
             if not should_continue:
                 break
@@ -252,6 +317,19 @@ def run_navigation_session(url: str, persona: str, objective: str, max_steps: in
 st.title("🔍 Autonomous Mystery Shopper")
 st.caption("AI-powered mobile app testing with vision navigation")
 
+# Session selector (if there are multiple sessions)
+if len(session_options) > 1:
+    selected = st.selectbox(
+        "📋 Active Session",
+        options=list(session_options.keys()),
+        format_func=lambda x: session_options[x],
+        index=list(session_options.keys()).index(selected_session_id) if selected_session_id in session_options else 0,
+        key="session_selector"
+    )
+    if selected != st.session_state.selected_session:
+        st.session_state.selected_session = selected
+        st.rerun()
+
 # Status row
 status_col1, status_col2, status_col3, status_col4 = st.columns([1, 1, 1, 1])
 
@@ -292,6 +370,7 @@ with left_col:
 # RIGHT: AI Thought Log
 with right_col:
     st.subheader("🧠 AI Thought Process")
+    st.caption("💡 Hover over ℹ️ icons to see full AI reasoning")
     
     # Scrolling log display
     log_container = st.container(height=400)
@@ -299,7 +378,28 @@ with right_col:
         if current_logs:
             # Show logs in reverse order (newest first)
             for entry in reversed(current_logs[-30:]):
-                st.text(entry)
+                # Handle both old string format and new dict format
+                if isinstance(entry, dict):
+                    timestamp = entry.get("timestamp", "")
+                    emoji = entry.get("emoji", "•")
+                    message = entry.get("message", "")
+                    reasoning = entry.get("reasoning", "")
+                    
+                    # Create columns for log entry + info button
+                    if reasoning:
+                        col1, col2 = st.columns([9, 1])
+                        with col1:
+                            st.text(f"[{timestamp}] {emoji} {message}")
+                        with col2:
+                            st.markdown(
+                                f'<span title="{reasoning}" style="cursor:help;">ℹ️</span>',
+                                unsafe_allow_html=True
+                            )
+                    else:
+                        st.text(f"[{timestamp}] {emoji} {message}")
+                else:
+                    # Old string format (backwards compatibility)
+                    st.text(entry)
         else:
             st.text("Waiting for session to start...")
             st.text("")
@@ -307,7 +407,7 @@ with right_col:
             st.text("• What it sees on screen")
             st.text("• Which element to interact with")
             st.text("• Actions taken (click, type, scroll)")
-            st.text("• Any issues detected")
+            st.text("• Hover ℹ️ for full AI reasoning")
 
 st.divider()
 
@@ -360,6 +460,16 @@ with ctrl_col5:
         disabled=is_running
     )
 
+# Browserless toggle (new row)
+browserless_col1, browserless_col2 = st.columns([1, 5])
+with browserless_col1:
+    use_browserless = st.checkbox(
+        "🐳 Docker Browserless",
+        value=True,
+        disabled=is_running,
+        help="Use local Docker Browserless (ws://localhost:3000) for stealth & bot detection bypass"
+    )
+
 # Start/Stop buttons
 btn_col1, btn_col2, btn_col3 = st.columns([1, 1, 4])
 
@@ -382,7 +492,7 @@ with btn_col1:
                 # Start background thread
                 thread = threading.Thread(
                     target=run_navigation_session,
-                    args=(target_url, persona, objective, max_steps),
+                    args=(target_url, persona, objective, max_steps, use_browserless),
                     daemon=True
                 )
                 thread.start()

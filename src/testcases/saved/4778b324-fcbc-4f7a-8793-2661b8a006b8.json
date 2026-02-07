@@ -1,0 +1,14 @@
+{
+  "id": "4778b324-fcbc-4f7a-8793-2661b8a006b8",
+  "name": "ever",
+  "objective": "sign up",
+  "target_url": "https://www.shopee.com",
+  "persona": "normal_user",
+  "created_at": "2026-02-07T23:18:19.114517",
+  "last_run": "2026-02-07T23:19:21.601880",
+  "run_count": 1,
+  "last_result": "FAIL",
+  "tags": [],
+  "max_steps": 30,
+  "use_browserless": false
+}
