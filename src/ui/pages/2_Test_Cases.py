@@ -183,7 +183,7 @@ def run_test_case(test_case: TestCase, use_browserless: bool = True) -> TestCase
 # ============================================
 # HEADER
 # ============================================
-st.title("📋 Test Cases")
+st.title("Test Cases")
 st.caption("Define testing objectives in natural language")
 
 st.divider()

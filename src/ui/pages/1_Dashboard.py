@@ -170,7 +170,7 @@ session_options = {}
 for sid, info in running_sessions.items():
     session_options[sid] = f"🟢 {info.get('name', sid)[:30]}"
 # Add dashboard option
-session_options["dashboard"] = "🖥️ Dashboard Session"
+session_options["dashboard"] = "Dashboard Session"
 # Add non-running sessions
 for sid, info in all_sessions.items():
     if sid not in running_sessions:
@@ -396,7 +396,7 @@ st.caption("AI-powered mobile app testing with vision navigation")
 # Session selector (if there are multiple sessions)
 if len(session_options) > 1:
     selected = st.selectbox(
-        "📋 Active Session",
+        "Active Session",
         options=list(session_options.keys()),
         format_func=lambda x: session_options[x],
         index=list(session_options.keys()).index(selected_session_id)
@@ -436,7 +436,7 @@ left_col, right_col = st.columns([6, 4])
 
 # LEFT: Screenshot Viewer
 with left_col:
-    st.subheader("📸 Live Screenshot")
+    st.subheader("Live Screenshot")
 
     screenshot_path = get_latest_screenshot()
     if screenshot_path:
@@ -451,8 +451,8 @@ with left_col:
 
 # RIGHT: AI Thought Log
 with right_col:
-    st.subheader("🧠 AI Thought Process")
-    st.caption("💡 Hover over ℹ️ icons to see full AI reasoning")
+    st.subheader("AI Thought Process")
+    st.caption("Hover over ℹ️ icons to see full AI reasoning")
 
     # Scrolling log display
     log_container = st.container(height=400)
@@ -496,7 +496,7 @@ st.divider()
 # ============================================
 # CONTROLS
 # ============================================
-st.subheader("⚙️ Session Controls")
+st.subheader("Session Controls")
 
 is_running = current_status.get("running", False)
 
@@ -542,8 +542,8 @@ with ctrl_col5:
 browserless_col1, browserless_col2 = st.columns([1, 5])
 with browserless_col1:
     use_browserless = st.checkbox(
-        "🐳 Docker Browserless",
-        value=True,
+        "Docker Browserless",
+        value=False,
         disabled=is_running,
         help="Use local Docker Browserless (ws://localhost:3000) for stealth & bot detection bypass",
     )
@@ -578,7 +578,7 @@ with btn_col1:
                 st.rerun()
 
 with btn_col2:
-    if st.button("🗑️ Clear Logs", use_container_width=True):
+    if st.button("Clear Logs", use_container_width=True):
         clear_session_data()
         st.rerun()
 

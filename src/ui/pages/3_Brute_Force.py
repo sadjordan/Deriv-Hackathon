@@ -116,7 +116,7 @@ def run_brute_force(target_url: str, refresh_interval: int, max_screens: int):
 # ============================================
 # HEADER
 # ============================================
-st.title("🔨 Brute Force Mode")
+st.title("Brute Force Mode")
 st.caption("Systematically test every interactive element")
 
 st.divider()
@@ -127,7 +127,7 @@ st.divider()
 status = read_status()
 is_running = status.get("running", False)
 
-st.subheader("⚙️ Controls")
+st.subheader("Controls")
 
 ctrl_col1, ctrl_col2 = st.columns(2)
 
