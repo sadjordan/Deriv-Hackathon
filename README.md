@@ -21,6 +21,7 @@ This system uses Google's Gemini Flash 2.5 Vision AI to analyze screenshots and 
 - **Playwright** - Browser automation with mobile emulation
 - **Google Gemini Flash 2.5** - Vision AI for navigation and diagnosis
 - **Pillow** - Image processing and annotations
+- **Streamlit** - Basic frontend for displaying the app
 
 ## 📦 Installation
 
@@ -52,10 +53,8 @@ cp .env.example .env
 
 ## 🚀 Quick Start
 
-### Run Phase 3 Diagnostic Tests
-
 ```bash
-python tests/test_diagnostics.py
+python streamlit run src/ui/app.py
 ```
 
 This tests:
@@ -175,46 +174,7 @@ print(f"By severity: {report['by_severity']}")
 | **P2 - Medium** | Moderate friction with workaround | 72 hours | Plan fix for upcoming sprint |
 | **P3 - Low** | Minor issue or edge case | 1 week | Backlog item |
 
-## 🏷️ Issue Categories
-
-1. **UX Friction** - Confusing UI, unclear labels, hard to find elements
-2. **Technical Error** - Crashes, HTTP errors (404, 500), timeouts
-3. **Accessibility** - Small text, poor contrast, touch targets too small
-4. **Performance** - Slow loading, lag, frozen pages
-5. **Broken Flow** - Missing buttons, dead ends, incomplete flows
-6. **Form Validation** - Unclear input requirements, validation errors
-7. **Navigation** - Complex navigation, missing back buttons
-8. **Content** - Missing information, unclear instructions
-
-## 📊 Current Status
-
-### ✅ Phase 1: Vision-to-Action Loop (COMPLETE)
-- [x] Browser management with iPhone 13 emulation
-- [x] Screenshot capture and base64 encoding
-- [x] Gemini Vision integration
-- [x] Coordinate-based action execution
-
-### ✅ Phase 2: Autonomous Navigation (SIMPLIFIED)
-- [x] Navigation state machine (INITIALIZED → NAVIGATING → STUCK/ERROR/COMPLETED)
-- [x] Autonomous navigation loop with progress detection
-- [x] Input field detection and test data generation
-- [x] Progress verification (screenshot hashing, URL tracking)
-- [x] Simplified without persona complexity
-
-### ✅ Phase 3: AI-Powered Diagnostics (COMPLETE)
-- [x] Issue detection integrated into navigation loop
-- [x] Severity scoring (P0-P3) with confidence levels
-- [x] Issue categorization (8 categories)
-- [x] Rule-based root cause analysis
-- [x] AI-powered diagnosis for P0/P1 issues
-- [x] Issue report generation
-
-### 🔄 Upcoming Phases
-- **Phase 4**: Streamlit dashboard and Microsoft Teams alerting
-- **Phase 5**: Prompt-driven test case management
-- **Phase 6**: Brute force continuous testing mode
-
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### "GOOGLE_API_KEY not found"
 - Ensure `.env` file exists in project root
@@ -230,23 +190,5 @@ playwright install chromium --force
 pip install -r requirements.txt
 ```
 
-## 📝 Development
 
-### Running Tests
-
-```bash
-# Phase 1: Vision navigation test
-python tests/test_vision_navigation.py
-
-# Phase 3: Diagnostic tests
-python tests/test_diagnostics.py
-```
-
-## 🔗 Resources
-
-- [Gemini API Documentation](https://ai.google.dev/docs)
-- [Playwright Python Docs](https://playwright.dev/python/)
-
----
-
-**Built for the Deriv Hackathon 2026** 🚀
+**Built for the Deriv Hackathon 2026** 

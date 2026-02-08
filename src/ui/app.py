@@ -1,18 +1,13 @@
-"""
-Mystery Shopper - Main App Entry Point
-Multi-page Streamlit application
-"""
-
 import streamlit as st
 
 st.set_page_config(
-    page_title="Mystery Shopper",
+    page_title="QA Bot",
     page_icon="🔍",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-st.title("🔍 Autonomous Mystery Shopper")
+st.title("QA Bot")
 st.caption("AI-powered mobile app testing with vision navigation")
 
 st.divider()
@@ -37,14 +32,14 @@ Use the **sidebar** to navigate between pages:
 import os
 
 if os.getenv("GOOGLE_API_KEY"):
-    st.success("✅ GOOGLE_API_KEY is configured")
+    st.success("GOOGLE_API_KEY is configured")
 else:
-    st.warning("⚠️ GOOGLE_API_KEY not set - add it to your .env file")
+    st.warning("GOOGLE_API_KEY not set - add it to your .env file")
 
 if os.getenv("SLACK_WEBHOOK_URL"):
-    st.success("✅ Slack webhook configured")
+    st.success("Slack webhook configured")
 else:
-    st.info("ℹ️ SLACK_WEBHOOK_URL not set (optional)")
+    st.info("ℹ SLACK_WEBHOOK_URL not set (optional)")
 
 st.divider()
 st.caption("Built with Streamlit • Powered by Gemini Flash 2.5 Vision")
